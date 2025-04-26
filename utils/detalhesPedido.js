@@ -9,7 +9,7 @@ const db = await open({
 });
 
 export async function detlhesPedidos(id) {
-    const dadosPedidos = await db.all(`SELECT * FROM itens_pedido`);
+    const dadosPedidos2 = await db.all(`SELECT * FROM itens_pedido`);
     const dadosProdutos = await db.all(`SELECT * FROM produtos`);
     const dadosClientes = await db.all(`SELECT * FROM clientes`);
     const dadosPedidosCompleto = await db.all(`

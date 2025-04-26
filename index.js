@@ -51,9 +51,7 @@ async function criarTabelas() {
   };
 
 await criarTabelas();
-const dbClientes = await db.all('SELECT * FROM clientes');
-const dbProdutos = await db.all('SELECT * FROM produtos');
-const dbPedidos = await db.all(`SELECT * FROM pedidos`);
+
 
 const MENU = [
     'Cadastrar Cliente',
@@ -66,7 +64,7 @@ const MENU = [
     'Sair'
 ];
 
-export function Menus() {
+export async function Menus() {
     inquirer.prompt([
         {
             type: 'list',
@@ -74,7 +72,7 @@ export function Menus() {
             message: 'Escolha uma opção:',
             choices: MENU,
         },
-    ]).then((resposta) => {
+    ]).then(async (resposta) => {
         switch (resposta.menu) {
             case 'Cadastrar Cliente':
                 console.log(chalk.blue('\n===Cadastrar clinete===\n'));
@@ -90,78 +88,113 @@ export function Menus() {
                 const estoque = readline.questionInt('Digite o Estoque: ');
                 inserirProdutos(nome_Produto, preco, estoque)
                 break;
-            case 'Fazer pedido':
-                console.log(chalk.blue('\n===Fazer pedido===\n'));
-                const clienteId = inquirer.prompt([
+                case 'Fazer pedido':
+                console.log(chalk.blue('\n=== Fazer pedido ===\n'));
+
+                const dbClientes = await db.all('SELECT * FROM clientes');
+                const dbProdutos = await db.all('SELECT * FROM produtos');
+
+                if (dbClientes.length === 0) {
+                    console.log(chalk.yellow('\nNenhum cliente encontrado. Caso já tenha registrado um cliente, reinicie o programa.\n'));
+                    return Menus();
+                }
+
+                if (dbProdutos.length === 0) {
+                    console.log(chalk.yellow('\nNenhum produto encontrado. Caso já tenha registrado um produto, reinicie o programa.\n'));
+                    return Menus();
+                }
+
+                const resposta1 = await inquirer.prompt([
                     {
                         type: 'list',
                         name: 'clienteId',
                         message: 'Escolha um cliente:',
                         choices: dbClientes.map(cliente => ({ name: cliente.nome, value: cliente.id })),
                     },
-                ]).then((resposta1) => {
-                    const clienteId = resposta1.clienteId;
-                    const produtos = inquirer.prompt([
-                        {
-                            type: 'list',
-                            name: 'produtos',
-                            message: 'Escolha os produtos:',
-                            choices: dbProdutos.map(produto => ({ name: produto.nome, value: produto.id })),
-                        },
-                    ]).then((resposta) => {
-                        const quantidade = readline.questionInt('Digite a quantidade: ');
-                        const produtoSelecionado = dbProdutos.find(produto => produto.id === resposta.produtos);
-                        const quantidadeEstoque = produtoSelecionado.estoque;
+                ]);
+                const clienteId = resposta1.clienteId;
 
-                        if (quantidade > produtoSelecionado.estoque) {
-                            console.log(chalk.red('\nQuantidade maior que o estoque.\n'));
-                            return;
-                        }
-                        if (quantidade <= 0) {
-                            console.log(chalk.red('\nQuantidade inválida.\n'));
-                            return;
-                        }
-                        if (quantidadeEstoque <= 0) {
-                            console.log(chalk.red('\nProduto fora de estoque.\n'));
-                            return;
-                        }
-                        if (quantidadeEstoque < quantidade) {
-                            console.log(chalk.red('\nProduto fora de estoque.\n'));
-                            return;
-                        }
-                        const quantidadeFinal = quantidadeEstoque - quantidade;
-                        db.run(`UPDATE produtos SET estoque = ? WHERE id = ?`, [quantidadeFinal, produtoSelecionado.id]);
-                        fazerPedido(clienteId, [{ id: resposta.produtos, quantidade, preco: produtoSelecionado.preco }], quantidadeFinal);           
-                    });
-                });
-                break;
+                const respostaProduto = await inquirer.prompt([
+                    {
+                        type: 'list',
+                        name: 'produtos',
+                        message: 'Escolha os produtos:',
+                        choices: dbProdutos.map(produto => ({ name: produto.nome, value: produto.id })),
+                    },
+                ]);
+
+                const quantidade = readline.questionInt('Digite a quantidade: ');
+
+                const produtoSelecionado = dbProdutos.find(produto => produto.id === respostaProduto.produtos);
+
+                if (quantidade <= 0) {
+                    console.log(chalk.red('\nQuantidade inválida.\n'));
+                    return;
+                }
+
+                if (quantidade > produtoSelecionado.estoque) {
+                    console.log(chalk.red('\nQuantidade maior que o estoque disponível.\n'));
+                    return;
+                }
+
+                if (produtoSelecionado.estoque <= 0) {
+                    console.log(chalk.red('\nProduto fora de estoque.\n'));
+                    return;
+                }
+
+                const quantidadeFinal = produtoSelecionado.estoque - quantidade;
+                await db.run(`UPDATE produtos SET estoque = ? WHERE id = ?`, [quantidadeFinal, produtoSelecionado.id]);
+
+                await fazerPedido(clienteId, [{ id: respostaProduto.produtos, quantidade, preco: produtoSelecionado.preco }]);
+                return Menus();
+
             case 'Listar clientes':
                 console.log(chalk.blue('\n===Clientes cadastrados===\n'));
-                console.table(dbClientes);
+                (async () => {
+                    const dbClientes1 = await db.all('SELECT * FROM produtos');
+                    console.table(dbClientes1);
+                    return Menus();
+                })();
                 break;
             case 'Listar produtos':
                 console.log(chalk.blue('\n===Produtos registrados\n'));
-                console.table(dbProdutos);
+                (async () => {
+                    const dbProdutos1 = await db.all('SELECT * FROM produtos');
+                    console.table(dbProdutos1);
+                    return Menus();
+                })();
                 break;
             case 'listar pedidos feitos':
                 console.log(chalk.blue('\n===Pedidos feitos===\n'));
-                console.table(dbPedidos);
+                (async () => {
+                    const dbPedidos1 = await db.all('SELECT * FROM produtos');
+                    console.table(dbPedidos1);
+                    return Menus();
+                })();
                 break;
-            case 'ver detalhes de um pedido':
-                console.log(chalk.blue('\nVocê escolheu ver detalhes de um pedido.\n'));
-                const id = inquirer.prompt([
-                    {
-                        type: 'list',
-                        name: 'id',
-                        message: 'Escolha um pedido:',
-                        choices: dbPedidos.map(pedido => ({ name: pedido.nome, value: pedido.id })),
-                    },
-                ]).then((resposta) => {
-                    const id = resposta.id;
-                    detlhesPedidos(id);
-                    return;
-                });
-                break;
+                case 'ver detalhes de um pedido':
+                    console.log(chalk.blue('\nVocê escolheu ver detalhes de um pedido.\n'));
+                    
+                    (async () => {
+                        const dbPedidos = await db.all('SELECT * FROM itens_pedido');
+                        if (dbPedidos.length === 0) {
+                            console.log(chalk.yellow('\nNenhum pedido encontrado.\n'));
+                            return Menus();
+                        }
+                        const resposta1 = await inquirer.prompt([
+                           
+                            {
+                                type: 'list',
+                                name: 'id',
+                                message: 'Escolha um pedido:',
+                                choices: dbPedidos.map(pedido => ({ name: `Pedido ${pedido.id}`, value: pedido.id })),
+                            },
+                        ]);
+                        const id = resposta1.id;
+                        await detlhesPedidos(id);
+                        return Menus();
+                    })();
+                    break;
             case 'Sair':
                 console.log(chalk.red('\nSaindo...\n'));
                 process.exit(0);
