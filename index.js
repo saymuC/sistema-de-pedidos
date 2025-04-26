@@ -7,6 +7,7 @@ import { open } from "sqlite";
 import { inserirClientes } from "./utils/inserirClientes.js";
 import { inserirProdutos } from "./utils/inserirProdutos.js";
 import { fazerPedido } from "./utils/fazerPedido.js";
+import { detlhesPedidos } from "./utils/detalhesPedido.js";
 
 const db = await open({
     filename: './banco.db',
@@ -52,6 +53,7 @@ async function criarTabelas() {
 await criarTabelas();
 const dbClientes = await db.all('SELECT * FROM clientes');
 const dbProdutos = await db.all('SELECT * FROM produtos');
+const dbPedidos = await db.all(`SELECT * FROM pedidos`);
 
 const MENU = [
     'Cadastrar Cliente',
@@ -97,7 +99,8 @@ export function Menus() {
                         message: 'Escolha um cliente:',
                         choices: dbClientes.map(cliente => ({ name: cliente.nome, value: cliente.id })),
                     },
-                ]).then((resposta) => {
+                ]).then((resposta1) => {
+                    const clienteId = resposta1.clienteId;
                     const produtos = inquirer.prompt([
                         {
                             type: 'list',
@@ -127,21 +130,37 @@ export function Menus() {
                             return;
                         }
                         const quantidadeFinal = quantidadeEstoque - quantidade;
+                        db.run(`UPDATE produtos SET estoque = ? WHERE id = ?`, [quantidadeFinal, produtoSelecionado.id]);
                         fazerPedido(clienteId, [{ id: resposta.produtos, quantidade, preco: produtoSelecionado.preco }], quantidadeFinal);           
                     });
                 });
                 break;
             case 'Listar clientes':
-                console.log(chalk.blue('\nVocê escolheu listar os clientes.\n'));
+                console.log(chalk.blue('\n===Clientes cadastrados===\n'));
+                console.table(dbClientes);
                 break;
             case 'Listar produtos':
-                console.log(chalk.blue('\nVocê escolheu listar os produtos.\n'));
+                console.log(chalk.blue('\n===Produtos registrados\n'));
+                console.table(dbProdutos);
                 break;
             case 'listar pedidos feitos':
-                console.log(chalk.blue('\nVocê escolheu listar os pedidos feitos.\n'));
+                console.log(chalk.blue('\n===Pedidos feitos===\n'));
+                console.table(dbPedidos);
                 break;
             case 'ver detalhes de um pedido':
                 console.log(chalk.blue('\nVocê escolheu ver detalhes de um pedido.\n'));
+                const id = inquirer.prompt([
+                    {
+                        type: 'list',
+                        name: 'id',
+                        message: 'Escolha um pedido:',
+                        choices: dbPedidos.map(pedido => ({ name: pedido.nome, value: pedido.id })),
+                    },
+                ]).then((resposta) => {
+                    const id = resposta.id;
+                    detlhesPedidos(id);
+                    return;
+                });
                 break;
             case 'Sair':
                 console.log(chalk.red('\nSaindo...\n'));

@@ -23,7 +23,6 @@ export async function fazerPedido(clienteId, produtos, quantidade) {
             [pedido.lastID, produto.id, produto.quantidade, produto.preco]
         );
     }
-
     console.log(chalk.green('\nPedido realizado com sucesso!\n'));
     Menus();
 }
