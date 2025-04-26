@@ -26,7 +26,6 @@ export async function fazerPedido(clienteId, produtos) {
         }
 
         console.log(chalk.green('\nPedido realizado com sucesso!\n'));
-        Menus();
     } catch (error) {
         console.error(chalk.red('\nErro ao fazer pedido:\n'), error.message);
     }

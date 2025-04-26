@@ -81,17 +81,35 @@ export async function Menus() {
                 limpar();
                 console.log(chalk.blue('\n===Cadastrar clinete===\n'));
                 const nome = readline.question('Digite o nome do cliente: ');
+                if (nome === '') {
+                    console.log(chalk.yellow('\nNome inválido. Tente outro \n'));
+                    return Menus();
+                }
                 const email = readline.questionEMail('Digite o email do cliente: ');
                 const telefone = readline.questionInt('Digite o telefone do cliente: ');
+                limpar();
                 inserirClientes(nome, email, telefone);
                 break;
             case 'Cadastrar produto':
                 limpar();
                 console.log(chalk.blue('\n===Cadastrar Produto===\n'));
                 const nome_Produto = readline.question('Nome do produto: ');
+                if (nome_Produto === '') {
+                    console.log(chalk.yellow('\nNome inválido. Tente outro \n'));
+                    return Menus();
+                }
                 const preco = readline.questionFloat('Digite o preço: ');
+                if (preco <= 0) {
+                    console.log(chalk.yellow('\nValor invalido, Tente outro \n'));
+                    return Menus();
+                }
                 const estoque = readline.questionInt('Digite o Estoque: ');
-                inserirProdutos(nome_Produto, preco, estoque)
+                if (estoque <= 0) {
+                    console.log(chalk.yellow('\nValor invalido, Tente outro \n'));
+                    return Menus();
+                }
+                limpar();
+                inserirProdutos(nome_Produto, preco, estoque);
                 break;
                 case 'Fazer pedido':
                     limpar();
@@ -138,19 +156,19 @@ export async function Menus() {
                 if (quantidade <= 0) {
                     limpar();
                     console.log(chalk.red('\nQuantidade inválida.\n'));
-                    return;
+                    return Menus();
                 }
 
                 if (quantidade > produtoSelecionado.estoque) {
                     limpar();
                     console.log(chalk.red(`\nQuantidade maior que o estoque disponível. Estoque atual: ${produtoSelecionado.estoque}\n`));
-                    return;
+                    return Menus();
                 }
 
                 if (produtoSelecionado.estoque <= 0) {
                     limpar();
                     console.log(chalk.red('\nProduto fora de estoque.\n'));
-                    return;
+                    return Menus;
                 }
 
                 const quantidadeFinal = produtoSelecionado.estoque - quantidade;
@@ -163,16 +181,26 @@ export async function Menus() {
                 limpar();
                 console.log(chalk.blue('\n===Clientes cadastrados===\n'));
                 (async () => {
-                    const dbClientes1 = await db.all('SELECT * FROM produtos');
+                    const dbClientes1 = await db.all('SELECT * FROM clientes');
+                    const resultado = await db.get('SELECT COUNT(*) as total FROM clientes');
+                    if (resultado.total === 0) {
+                        console.log(chalk.red('\nNenhum cliente encontrado! Adicione clientes.\n'));
+                        return Menus();
+                    }
                     console.table(dbClientes1);
                     return Menus();
                 })();
                 break;
             case 'Listar produtos':
                 limpar();
-                console.log(chalk.blue('\n===Produtos registrados\n'));
+                console.log(chalk.blue('\n===Produtos registrados===\n'));
                 (async () => {
                     const dbProdutos1 = await db.all('SELECT * FROM produtos');
+                    const resultado = await db.get('SELECT COUNT(*) as total FROM produtos');
+                    if (resultado.total === 0) {
+                        console.log(chalk.red('\nNenhum produto encontrado! Adicione produtos.\n'));
+                        return Menus();
+                    }
                     console.table(dbProdutos1);
                     return Menus();
                 })();
@@ -181,10 +209,16 @@ export async function Menus() {
                 limpar();
                 console.log(chalk.blue('\n===Pedidos feitos===\n'));
                 (async () => {
-                    const dbPedidos1 = await db.all('SELECT * FROM produtos');
+                    const dbPedidos1 = await db.all('SELECT * FROM itens_pedido');
+                    const resultado = await db.get('SELECT COUNT(*) as total FROM itens_pedido');
+                    if (resultado.total === 0) {
+                        console.log(chalk.red('\nNenhum pedido encontrado! Adicione pedidos.\n'));
+                        return Menus();
+                    }
                     console.table(dbPedidos1);
                     return Menus();
                 })();
+                
                 break;
                 case 'ver detalhes de um pedido':
                     limpar();

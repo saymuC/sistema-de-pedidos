@@ -26,5 +26,5 @@ export async function detlhesPedidos(id) {
     }
     console.log(chalk.blue('\nDetalhes do Pedido:\n'));
     console.table(dadosPedidosCompleto, ['id', 'data', 'total', 'cliente_nome', 'quantidade', 'produto_nome', 'preco_unitario']);
-    Menus();
+
 };
