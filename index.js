@@ -1,10 +1,12 @@
 import inquirer  from "inquirer";
 import chalk from "chalk";
-import readFileSync from "readline-sync";
+import readline from "readline-sync";
 import sqlite3 from 'sqlite3';
 import { open } from "sqlite";
 //funções
 import { inserirClientes } from "./utils/inserirClientes.js";
+import { inserirProdutos } from "./utils/inserirProdutos.js";
+import { fazerPedido } from "./utils/fazerPedido.js";
 
 const db = await open({
     filename: './banco.db',
@@ -12,7 +14,7 @@ const db = await open({
 });
 
 async function criarTabelas() {
-    await db.run(`
+    await db.exec(`
       CREATE TABLE IF NOT EXISTS clientes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT NOT NULL,
@@ -47,4 +49,104 @@ async function criarTabelas() {
     `);
   };
 
-  await criarTabelas();
+await criarTabelas();
+const dbClientes = await db.all('SELECT * FROM clientes');
+const dbProdutos = await db.all('SELECT * FROM produtos');
+
+const MENU = [
+    'Cadastrar Cliente',
+    'Cadastrar produto',
+    'Fazer pedido',
+    'Listar clientes',
+    'Listar produtos',
+    'listar pedidos feitos',
+    'ver detalhes de um pedido',
+    'Sair'
+];
+
+export function Menus() {
+    inquirer.prompt([
+        {
+            type: 'list',
+            name: 'menu',
+            message: 'Escolha uma opção:',
+            choices: MENU,
+        },
+    ]).then((resposta) => {
+        switch (resposta.menu) {
+            case 'Cadastrar Cliente':
+                console.log(chalk.blue('\n===Cadastrar clinete===\n'));
+                const nome = readline.question('Digite o nome do cliente: ');
+                const email = readline.questionEMail('Digite o email do cliente: ');
+                const telefone = readline.questionInt('Digite o telefone do cliente: ');
+                inserirClientes(nome, email, telefone);
+                break;
+            case 'Cadastrar produto':
+                console.log(chalk.blue('\n===Cadastrar Produto===\n'));
+                const nome_Produto = readline.question('Nome do produto: ');
+                const preco = readline.questionFloat('Digite o preço: ');
+                const estoque = readline.questionInt('Digite o Estoque: ');
+                inserirProdutos(nome_Produto, preco, estoque)
+                break;
+            case 'Fazer pedido':
+                console.log(chalk.blue('\n===Fazer pedido===\n'));
+                const clienteId = inquirer.prompt([
+                    {
+                        type: 'list',
+                        name: 'clienteId',
+                        message: 'Escolha um cliente:',
+                        choices: dbClientes.map(cliente => ({ name: cliente.nome, value: cliente.id })),
+                    },
+                ]).then((resposta) => {
+                    const produtos = inquirer.prompt([
+                        {
+                            type: 'list',
+                            name: 'produtos',
+                            message: 'Escolha os produtos:',
+                            choices: dbProdutos.map(produto => ({ name: produto.nome, value: produto.id })),
+                        },
+                    ]).then((resposta) => {
+                        const quantidade = readline.questionInt('Digite a quantidade: ');
+                        const produtoSelecionado = dbProdutos.find(produto => produto.id === resposta.produtos);
+                        const quantidadeEstoque = produtoSelecionado.estoque;
+
+                        if (quantidade > produtoSelecionado.estoque) {
+                            console.log(chalk.red('\nQuantidade maior que o estoque.\n'));
+                            return;
+                        }
+                        if (quantidade <= 0) {
+                            console.log(chalk.red('\nQuantidade inválida.\n'));
+                            return;
+                        }
+                        if (quantidadeEstoque <= 0) {
+                            console.log(chalk.red('\nProduto fora de estoque.\n'));
+                            return;
+                        }
+                        if (quantidadeEstoque < quantidade) {
+                            console.log(chalk.red('\nProduto fora de estoque.\n'));
+                            return;
+                        }
+                        const quantidadeFinal = quantidadeEstoque - quantidade;
+                        fazerPedido(clienteId, [{ id: resposta.produtos, quantidade, preco: produtoSelecionado.preco }], quantidadeFinal);           
+                    });
+                });
+                break;
+            case 'Listar clientes':
+                console.log(chalk.blue('\nVocê escolheu listar os clientes.\n'));
+                break;
+            case 'Listar produtos':
+                console.log(chalk.blue('\nVocê escolheu listar os produtos.\n'));
+                break;
+            case 'listar pedidos feitos':
+                console.log(chalk.blue('\nVocê escolheu listar os pedidos feitos.\n'));
+                break;
+            case 'ver detalhes de um pedido':
+                console.log(chalk.blue('\nVocê escolheu ver detalhes de um pedido.\n'));
+                break;
+            case 'Sair':
+                console.log(chalk.red('\nSaindo...\n'));
+                process.exit(0);
+        }
+    });
+}
+Menus();

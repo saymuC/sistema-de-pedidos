@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import sqlite3 from 'sqlite3';
 import { open } from "sqlite";
+import { Menus } from "../index.js";
 
 const db = await open({
     filename: './banco.db',
@@ -15,6 +16,13 @@ export async function inserirClientes(nome, email, telefone) {
     if (emailRepetido) {
         console.log(chalk.red('\nJá existe um usuário cadastrado com este email. Por favor tente outro.'));
         return;
+    }
+    const telefoneRepetido = await db.get(
+        `SELECT * FROM clientes WHERE telefone = ?`, [telefone]
+    );
+    if (telefoneRepetido) {
+        console.log(chalk.red('\nJá existe um usuário cadastrado com este telefone. Por favor tente outro.'));
+        return;
     }   
     await db.run(
         `INSERT INTO clientes (nome, email, telefone)
@@ -22,4 +30,5 @@ export async function inserirClientes(nome, email, telefone) {
         [nome, email, telefone]
     );
     console.log(chalk.green('\n Cliente cadastrado com sucesso!\n'));
+    Menus();
 }
